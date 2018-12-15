@@ -86,22 +86,23 @@ void fill_interface_data(struct ifmibdata *ifmib) {
 
 static const char *suffixes[] = {
 	"bytes",
-	"KiB",
-	"MiB",
-	"GiB",
-	"TiB",
-	"PiB",
-	"EiB",
-	"ZiB",
-	"YiB"
+	"K",
+	"M",
+	"G",
+	"T",
+	"P",
+	"E",
+	"Z",
+	"Y"
 };
 
-void humanize_digit(long double number, struct human_readble_string *string) {
+void humanize_digit(long double number/*(bytes)*/, struct human_readble_string *string) {
+	
 	unsigned int base = 1024;
-	unsigned int max = 9999; // 4 digits at most
-	unsigned int count;
+	unsigned int count = 1;
+	number /= base;
 
-	for (count = 0; number > max; count++)
+	for (count = 1; number > base; count++)
 		number /= base;
 
 	string->number = number;

@@ -10,13 +10,14 @@
 #import "SpeedProvider.h"
 
 @interface AppDelegate : NSObject<NSApplicationDelegate> {
-  IBOutlet NSMenu *statusMenu;
-  IBOutlet NSMenuItem *quit;
-  NSMutableAttributedString *speedString;
-  struct if_data64 ifdata;
-
-  NSWindow *window;
-  NSStatusItem *statusItem;
+	IBOutlet NSMenu *statusMenu;
+	IBOutlet NSMenuItem *quit;
+	NSMutableAttributedString *speedString;
+	struct if_data64 ifdata;
+	
+	NSWindow *window;
+	NSStatusItem *statusItem;
+	NSDictionary *attributes;
 }
 
 @property IBOutlet NSWindow *window;
