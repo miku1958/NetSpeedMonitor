@@ -1,6 +1,5 @@
 import SwiftUI
 import Combine
-import ServiceManagement
 import SystemConfiguration
 
 enum NetSpeedUpdateInterval: Int, CaseIterable, Identifiable {
@@ -24,13 +23,10 @@ enum NetSpeedUpdateInterval: Int, CaseIterable, Identifiable {
 }
 
 class MenuBarState: ObservableObject {
-    @AppStorage("AutoLaunchEnabled") var autoLaunchEnabled: Bool = false {
-        didSet { updateAutoLaunchStatus() }
-    }
     @AppStorage("NetSpeedUpdateInterval") var netSpeedUpdateInterval: NetSpeedUpdateInterval = .Sec1 {
         didSet { updateNetSpeedUpdateIntervalStatus() }
     }
-    @Published var menuText = "↑ \(String(format: "%6.2lf", 0)) \(" B")/s\n↓ \(String(format: "%6.2lf", 0)) \(" B")/s"
+    @Published var menuText = ""
     
     var currentIcon: NSImage {
         return MenuBarIconGenerator.generateIcon(text: menuText)
@@ -45,32 +41,6 @@ class MenuBarState: ObservableObject {
     private var uploadMetric: String = " B"
     private var downloadMetric: String = " B"
     private let speedMetrics: [String] = [" B", "KB", "MB", "GB", "TB"]
-    
-    private func currentAutoLaunchStatus() -> Bool {
-        let service = SMAppService.mainApp
-        let status = service.status
-        return status == .enabled
-    }
-    
-    private func updateAutoLaunchStatus() {
-        let service = SMAppService.mainApp
-        
-        do {
-            if autoLaunchEnabled {
-                if service.status == .notFound || service.status == .notRegistered {
-                    try service.register()
-                }
-            } else {
-                if service.status == .enabled {
-                    try service.unregister()
-                }
-            }
-            logger.info("updateAutoLaunchStatus succeeded, autoLaunchEnabled: \(String(self.autoLaunchEnabled)), service.enabled: \(String(service.status == .enabled))")
-        } catch {
-            logger.warning("updateAutoLaunchStatus failed: \(error.localizedDescription), autoLaunchEnabled: \(String(self.autoLaunchEnabled)), service.enabled: \(String(service.status == .enabled))")
-            autoLaunchEnabled = currentAutoLaunchStatus()
-        }
-    }
     
     private func updateNetSpeedUpdateIntervalStatus() {
         logger.info("netSpeedUpdateInterval, \(self.netSpeedUpdateInterval.displayName)")
@@ -107,8 +77,34 @@ class MenuBarState: ObservableObject {
                                 self.uploadMetric = metric
                             }
                         }
-                        self.menuText = "↑ \(String(format: "%6.2lf", self.uploadSpeed)) \(self.uploadMetric)/s\n↓ \(String(format: "%6.2lf", self.downloadSpeed)) \(self.downloadMetric)/s"
-                        
+						typealias StringLength = (integer: Int, decimal: Int)
+						func stringLength(_ speed: Double) -> StringLength {
+							var length: StringLength = (1, 0)
+							var speed = speed
+							while speed > 10 {
+								speed /= 10
+								length.integer += 1
+							}
+							while speed - Double(Int(speed)) > 0 {
+								speed *= 10
+								length.decimal += 1
+							}
+							while length.integer + length.decimal < 4 {
+								length.decimal += 1
+							}
+							if length.decimal > 2 {
+								length.decimal = 2
+							}
+							if length.integer + length.decimal > 4 {
+								length.decimal = 4 - length.integer
+							}
+
+							return length
+						}
+
+						let length = stringLength(max(self.downloadSpeed, self.uploadSpeed))
+						self.menuText = "\(String(format: "%5.\(length.decimal)lf", self.uploadSpeed)) \(self.uploadMetric)/s\n\(String(format: "%5.\(length.decimal)lf", self.downloadSpeed)) \(self.downloadMetric)/s"
+
                         logger.info("deltaIn: \(String(format:"%.6f", self.downloadSpeed)) \(self.downloadMetric)/s, deltaOut: \(String(format:"%.6f", self.uploadSpeed)) \(self.uploadMetric)/s")
                     }
                 }
@@ -126,7 +122,6 @@ class MenuBarState: ObservableObject {
     
     init() {
         DispatchQueue.main.async {
-            self.autoLaunchEnabled = self.currentAutoLaunchStatus()
             self.startTimer()
         }
     }
