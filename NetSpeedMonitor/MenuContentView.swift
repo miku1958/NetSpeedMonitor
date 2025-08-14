@@ -4,9 +4,11 @@ import os.log
 public var logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "elegracer")
 
 struct MenuContentView: View {
+	@Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject var menuBarState: MenuBarState
     
     var body: some View {
+		let _ = Self._printChanges()
         VStack(alignment: .leading, spacing: 8) {
             Section {
                 HStack {

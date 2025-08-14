@@ -9,7 +9,7 @@ enum NetSpeedUpdateInterval: Int, CaseIterable, Identifiable {
     case Sec10 = 10
     case Sec30 = 30
     
-    var id: Int { self.rawValue }
+    var id: Int { rawValue }
     
     var displayName: String {
         switch self {
@@ -26,26 +26,18 @@ class MenuBarState: ObservableObject {
     @AppStorage("NetSpeedUpdateInterval") var netSpeedUpdateInterval: NetSpeedUpdateInterval = .Sec1 {
         didSet { updateNetSpeedUpdateIntervalStatus() }
     }
-    @Published var menuText = ""
-    
-    var currentIcon: NSImage {
-        return MenuBarIconGenerator.generateIcon(text: menuText)
-    }
+	@Published var menuBarIcon: MenuBarIcon?
     
     private var timer: Timer?
     private var primaryInterface: String?
     private var netTrafficStat = NetTrafficStatReceiver()
-    
-    private var uploadSpeed: Double = 0.0
-    private var downloadSpeed: Double = 0.0
-    private var uploadMetric: String = " B"
-    private var downloadMetric: String = " B"
-    private let speedMetrics: [String] = [" B", "KB", "MB", "GB", "TB"]
+
+    private let speedMetrics: [String] = ["B", "KB", "MB", "GB", "TB"]
     
     private func updateNetSpeedUpdateIntervalStatus() {
-        logger.info("netSpeedUpdateInterval, \(self.netSpeedUpdateInterval.displayName)")
-        self.stopTimer()
-        self.startTimer()
+		logger.info("netSpeedUpdateInterval, \(self.netSpeedUpdateInterval.displayName)")
+        stopTimer()
+        startTimer()
     }
     
     private func findPrimaryInterface() -> String? {
@@ -56,79 +48,91 @@ class MenuBarState: ObservableObject {
     }
     
     private func startTimer() {
-        let timer = Timer.scheduledTimer(withTimeInterval: TimeInterval(self.netSpeedUpdateInterval.rawValue), repeats: true) { _ in
-
-                self.primaryInterface = self.findPrimaryInterface()
-                if (self.primaryInterface == nil) { return }
-                
-                if let netTrafficStatMap = self.netTrafficStat.getNetTrafficStatMap() {
-                    if let netTrafficStat = netTrafficStatMap.object(forKey: self.primaryInterface!) as? NetTrafficStatOC  {
-                        self.downloadSpeed = netTrafficStat.ibytes_per_sec as! Double
-                        self.uploadSpeed = netTrafficStat.obytes_per_sec as! Double
-                        self.downloadMetric = self.speedMetrics.first!
-                        self.uploadMetric = self.speedMetrics.first!
-                        for metric in self.speedMetrics.dropFirst() {
-                            if self.downloadSpeed > 1000.0 {
-                                self.downloadSpeed /= 1024.0
-                                self.downloadMetric = metric
-                            }
-                            if self.uploadSpeed > 1000.0 {
-                                self.uploadSpeed /= 1024.0
-                                self.uploadMetric = metric
-                            }
-                        }
-						typealias StringLength = (integer: Int, decimal: Int)
-						func stringLength(_ speed: Double) -> StringLength {
-							var length: StringLength = (1, 0)
-							var speed = speed
-							while speed > 10 {
-								speed /= 10
-								length.integer += 1
-							}
-							while speed - Double(Int(speed)) > 0 {
-								speed *= 10
-								length.decimal += 1
-							}
-							while length.integer + length.decimal < 4 {
-								length.decimal += 1
-							}
-							if length.decimal > 2 {
-								length.decimal = 2
-							}
-							if length.integer + length.decimal > 4 {
-								length.decimal = 4 - length.integer
-							}
-
-							return length
-						}
-
-						let length = stringLength(max(self.downloadSpeed, self.uploadSpeed))
-						self.menuText = "\(String(format: "%5.\(length.decimal)lf", self.uploadSpeed)) \(self.uploadMetric)/s\n\(String(format: "%5.\(length.decimal)lf", self.downloadSpeed)) \(self.downloadMetric)/s"
-
-                        logger.info("deltaIn: \(String(format:"%.6f", self.downloadSpeed)) \(self.downloadMetric)/s, deltaOut: \(String(format:"%.6f", self.uploadSpeed)) \(self.uploadMetric)/s")
-                    }
-                }
-            }
-        RunLoop.current.add(timer, forMode: .common)
-        self.timer = timer
+		let timer = Timer.scheduledTimer(withTimeInterval: TimeInterval(netSpeedUpdateInterval.rawValue), repeats: true) { [weak self] _ in
+			self?.updateNetSpeed()
+		}
+		RunLoop.current.add(timer, forMode: .common)
+		self.timer = timer
         logger.info("startTimer")
     }
-    
+
+	private func updateNetSpeed() {
+		primaryInterface = findPrimaryInterface()
+		if (primaryInterface == nil) { return }
+
+		if let netTrafficStatMap = netTrafficStat.getNetTrafficStatMap() {
+			if let netTrafficStat = netTrafficStatMap.object(forKey: primaryInterface!) as? NetTrafficStatOC  {
+				var downloadSpeed = netTrafficStat.ibytes_per_sec as! Double
+				var uploadSpeed = netTrafficStat.obytes_per_sec as! Double
+				var downloadMetric = speedMetrics.first!
+				var uploadMetric = speedMetrics.first!
+				for metric in speedMetrics.dropFirst() {
+					if downloadSpeed > 1000.0 {
+						downloadSpeed /= 1024.0
+						downloadMetric = metric
+					}
+					if uploadSpeed > 1000.0 {
+						uploadSpeed /= 1024.0
+						uploadMetric = metric
+					}
+				}
+				typealias StringLength = (integer: Int, decimal: Int)
+				func stringLength(_ speed: Double) -> StringLength {
+					var length: StringLength = (1, 0)
+					var speed = speed
+					while speed > 10 {
+						speed /= 10
+						length.integer += 1
+					}
+					while speed - Double(Int(speed)) > 0 {
+						speed *= 10
+						length.decimal += 1
+					}
+					while length.integer + length.decimal < 4 {
+						length.decimal += 1
+					}
+					if length.decimal > 2 {
+						length.decimal = 2
+					}
+					if length.integer + length.decimal > 4 {
+						length.decimal = 4 - length.integer
+					}
+
+					return length
+				}
+
+				let length = stringLength(max(downloadSpeed, uploadSpeed))
+				menuBarIcon = .init(
+					textGroup: .init(
+						downloadSpeed: String(format: "%.\(length.decimal)lf", uploadSpeed),
+						downloadMetric: "\(uploadMetric)/s",
+						uploadSpeed: String(format: "%.\(length.decimal)lf", downloadSpeed),
+						uploadMetric: "\(downloadMetric)/s"
+					)
+				)
+
+				logger.info("deltaIn: \(String(format:"%.6f", downloadSpeed)) \(downloadMetric)/s, deltaOut: \(String(format:"%.6f", uploadSpeed)) \(uploadMetric)/s")
+			}
+		}
+	}
+
     private func stopTimer() {
-        self.timer?.invalidate()
-        self.timer = nil
+        timer?.invalidate()
+        timer = nil
         logger.info("stopTimer")
     }
     
     init() {
-        DispatchQueue.main.async {
-            self.startTimer()
+		updateNetSpeed()
+        DispatchQueue.main.async { [self] in
+			updateNetSpeed()
+            startTimer()
         }
     }
     
     deinit {
-        DispatchQueue.main.async {
-            self.stopTimer()
+        DispatchQueue.main.async { [self] in
+            stopTimer()
         }
     }
 }
