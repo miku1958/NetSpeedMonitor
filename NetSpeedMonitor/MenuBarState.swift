@@ -104,10 +104,10 @@ class MenuBarState: ObservableObject {
 				let length = stringLength(max(downloadSpeed, uploadSpeed))
 				menuBarIcon = .init(
 					textGroup: .init(
-						downloadSpeed: String(format: "%.\(length.decimal)lf", uploadSpeed),
-						downloadMetric: "\(uploadMetric)/s",
-						uploadSpeed: String(format: "%.\(length.decimal)lf", downloadSpeed),
-						uploadMetric: "\(downloadMetric)/s"
+						uploadSpeed: String(format: "%.\(length.decimal)lf", uploadSpeed),
+						uploadMetric: "\(uploadMetric)/s",
+						downloadSpeed: String(format: "%.\(length.decimal)lf", downloadSpeed),
+						downloadMetric: "\(downloadMetric)/s"
 					)
 				)
 

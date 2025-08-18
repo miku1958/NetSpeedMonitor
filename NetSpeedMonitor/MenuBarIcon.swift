@@ -1,10 +1,11 @@
 import SwiftUI
 
 struct MenuBarIconTextGroup: View, Equatable {
-	let downloadSpeed: String
-	let downloadMetric: String
 	let uploadSpeed: String
 	let uploadMetric: String
+
+	let downloadSpeed: String
+	let downloadMetric: String
 
 	var body: some View {
 		Grid(
@@ -35,10 +36,10 @@ struct MenuBarIcon: View {
 	static let width: CGFloat = {
 		let renderer = ImageRenderer(
 			content: MenuBarIconTextGroup(
-				downloadSpeed: "123.4",
-				downloadMetric: "KB/s",
-				uploadSpeed: "12.4",
-				uploadMetric: "B/s"
+				uploadSpeed: "123.4",
+				uploadMetric: "KB/s",
+				downloadSpeed: "12.4",
+				downloadMetric: "B/s"
 			)
 		)
 		let image = renderer.nsImage!
@@ -75,12 +76,14 @@ struct MenuBarIcon: View {
 }
 
 #Preview {
-	MenuBarIcon(
-		textGroup: .init(
-			downloadSpeed: "123.45",
-			downloadMetric: "KB/s",
-			uploadSpeed: "12.4",
-			uploadMetric: "B/s"
+	ZStack {
+		Color.black
+		MenuBarIconTextGroup(
+			uploadSpeed: "⬆️ 123.45",
+			uploadMetric: "KB/s",
+			downloadSpeed: "⬇️ 12.4",
+			downloadMetric: "B/s"
 		)
-	)
+	}
+	.frame(width: 100, height: 60)
 }
